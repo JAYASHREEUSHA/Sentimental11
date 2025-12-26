@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HR Dashboard – Final Report</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 30px; }
+        .card { background: white; padding: 25px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .bar-container { background: #eee; border-radius: 15px; height: 25px; width: 100%; overflow: hidden; margin: 15px 0; }
+        .bar-fill { height: 100%; width: 0%; transition: width 1s, background 0.5s; }
+        .good { color: #28a745; font-weight: bold; }
+        .medium { color: #ffc107; font-weight: bold; }
+        .low { color: #dc3545; font-weight: bold; }
+        .evidence-img { width: 220px; height: 150px; object-fit: cover; margin: 10px; border: 2px solid #ddd; border-radius: 8px; }
+        .mal-badge { float: right; background: #fee; color: #c33; padding: 2px 10px; border-radius: 15px; font-size: 0.85em; border: 1px solid #fcc; }
+    </style>
+</head>
+<body>
+    <h2>HR Dashboard – AI Proctoring Analysis</h2>
+    
+    <div class="card">
+        <h3>Behavioral Sentiment Indicators</h3>
+        <ul id="emotions" style="list-style: none; padding: 0;"></ul>
+    </div>
+
+    <div class="card">
+        <h3>Confidence Assessment</h3>
+        <div style="display: flex; justify-content: space-between;">
+            <span id="score-text">Score: 0%</span>
+            <span id="level-text">LEVEL: --</span>
+        </div>
+        <div class="bar-container"><div id="confidence-bar" class="bar-fill"></div></div>
+    </div>
+
+    <div class="card">
+        <h3>Malpractice Summary</h3>
+        <ul id="malpractice" style="list-style: none; padding: 0;"></ul>
+    </div>
+
+    <div class="card">
+        <h3>Captured Evidence (Capped at 5)</h3>
+        <div id="evidence"></div>
+    </div>
+
+    <script>
+    async function loadReport() {
+        try {
+            const r = await fetch("/report");
+            const d = await r.json();
+            
+            // Fix long decimal by forcing JS rounding
+            const cleanScore = parseFloat(d.confidence).toFixed(1);
+
+            // Update UI
+            document.getElementById("emotions").innerHTML = Object.entries(d.emotions).map(([k,v])=>`<li>${k} <span style="float:right"><b>${v}%</b></span></li>`).join('');
+            document.getElementById("score-text").innerText = `Confidence Score: ${cleanScore}%`;
+            document.getElementById("level-text").innerText = `LEVEL: ${d.level}`;
+            
+            const bar = document.getElementById("confidence-bar");
+            bar.style.width = `${cleanScore}%`;
+            bar.style.backgroundColor = d.level === "HIGH" ? "#28a745" : (d.level === "MEDIUM" ? "#ffc107" : "#dc3545");
+            document.getElementById("level-text").className = d.level.toLowerCase();
+
+            document.getElementById("malpractice").innerHTML = Object.entries(d.malpractice).map(([k,v])=>`<li>${k.replace('_',' ')} <span class="mal-badge">${v} incidents</span></li>`).join('');
+
+            let ev = document.getElementById("evidence");
+            ev.innerHTML = "";
+            ["PHONE","MULTIPLE_PERSON","LOOKING_AWAY","VOICE_HELP"].forEach(t => {
+                for(let i=1; i<=5; i++){
+                    let img = new Image();
+                    img.src = `/evidence/${t}_${i}.jpg?t=${Date.now()}`;
+                    img.className = "evidence-img";
+                    img.onerror = function() { this.style.display='none'; };
+                    ev.appendChild(img);
+                }
+            });
+        } catch(err) {}
+    }
+    setInterval(loadReport, 4000);
+    loadReport();
+    </script>
+</body>
+</html>
